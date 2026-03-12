@@ -44,7 +44,6 @@ function normalizarClasse(texto) {
 function calcularMedia(nota1, nota2, nota3) {
     return (nota1 + nota2 + nota3) / 3;
 }
-
 /**
  * Determina a situação do aluno com base na média.
  * - Média >= 7.0: Aprovado
