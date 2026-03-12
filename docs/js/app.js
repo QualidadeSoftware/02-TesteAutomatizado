@@ -42,7 +42,7 @@ function normalizarClasse(texto) {
  * @returns {number} Média aritmética das notas
  */
 function calcularMedia(nota1, nota2, nota3) {
-    return (nota1 + nota2) / 2;
+    return (nota1 + nota2 + nota3) / 3;
 }
 
 /**
@@ -102,7 +102,7 @@ function cadastrarAluno(event) {
         exibirMensagem('As notas devem estar entre 0 e 10.', 'erro');
         return;
     }
-
+    
     const media = calcularMedia(nota1, nota2, nota3);
     const situacao = determinarSituacao(media);
 
