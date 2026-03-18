@@ -233,14 +233,15 @@ test.describe('Cadastro de Alunos', () => {                               // [2]
     // Verificações
     const linhas = page.locator('#tabela-alunos tbody tr');               // [9]
     await expect(linhas).toHaveCount(1);                                  // [10]
-    await expect(page.getByText('Maria Souza')).toBeVisible();           // [11]
+    const linhaMaria = linhas.filter({ hasText: 'Maria Souza' });        // [11]
+    await expect(linhaMaria).toHaveCount(1);
 
     // Verificar a média calculada: (8 + 7 + 9) / 3 = 8.00
-    const celulaMedia = linhas.first().locator('td').nth(4);             // [12]
+    const celulaMedia = linhaMaria.first().locator('td').nth(4);         // [12]
     await expect(celulaMedia).toHaveText('8.00');                        // [13]
 
     // Verificar a situação (média >= 7 → Aprovado)
-    await expect(linhas.first().getByText('Aprovado')).toBeVisible();    // [14]
+    await expect(linhaMaria.first().locator('.badge')).toHaveText('Aprovado'); // [14]
   });
 });
 ```
@@ -259,10 +260,10 @@ test.describe('Cadastro de Alunos', () => {                               // [2]
 | **[8]** | `page.getByRole('button', { name: 'Cadastrar' }).click()` | Encontra um botão pelo seu papel acessível (`button`) e texto visível (`Cadastrar`), e clica nele. Mais resiliente que usar seletores CSS. |
 | **[9]** | `page.locator('#tabela-alunos tbody tr')` | Cria um locator que seleciona todas as linhas `<tr>` dentro do corpo da tabela. O locator é **lazy** — não busca os elementos imediatamente, apenas quando uma ação ou asserção é executada. |
 | **[10]** | `await expect(linhas).toHaveCount(1)` | Asserção que verifica que existe exatamente 1 linha na tabela. O Playwright tenta novamente automaticamente (*auto-retry*) até que a condição seja atendida ou o timeout expire. |
-| **[11]** | `await expect(...).toBeVisible()` | Verifica que o texto "Maria Souza" está visível na página. |
-| **[12]** | `linhas.first().locator('td').nth(4)` | Seleciona a 5ª célula (`nth(4)`, pois o índice começa em 0) da primeira linha — que corresponde à coluna "Média". |
+| **[11]** | `const linhaMaria = linhas.filter({ hasText: 'Maria Souza' })` | Restringe a busca à linha da tabela que contém o nome do aluno. Isso evita ambiguidade com a mensagem de sucesso, que também contém o nome cadastrado. |
+| **[12]** | `linhaMaria.first().locator('td').nth(4)` | Seleciona a 5ª célula (`nth(4)`, pois o índice começa em 0) da linha do aluno — que corresponde à coluna "Média". |
 | **[13]** | `await expect(celulaMedia).toHaveText('8.00')` | Verifica que o texto da célula é exatamente "8.00". **Este teste é crucial**: ele valida se o cálculo da média está correto. |
-| **[14]** | `getByText('Aprovado').toBeVisible()` | Verifica que a situação "Aprovado" aparece na linha do aluno. |
+| **[14]** | `locator('.badge').toHaveText('Aprovado')` | Verifica de forma precisa que a situação exibida na linha do aluno é "Aprovado", sem risco de casar com o card "Aprovados" nas estatísticas. |
 
 > **💡 Conceito-chave — Fixtures:** No Playwright, `page` é uma *fixture* fornecida automaticamente a cada teste. O framework cria uma nova instância do navegador para cada teste, garantindo que um teste não interfira no outro. Isso é chamado de **isolamento de testes**.
 
@@ -464,8 +465,11 @@ test.describe('QS Acadêmico — Testes do Sistema de Notas', () => {
       await page.getByRole('button', { name: 'Cadastrar' }).click();
 
       // Verificar que o aluno aparece na tabela
-      await expect(page.locator('#tabela-alunos tbody tr')).toHaveCount(1);
-      await expect(page.getByText('João Silva')).toBeVisible();
+      const linhas = page.locator('#tabela-alunos tbody tr');
+      const linhaJoao = linhas.filter({ hasText: 'João Silva' });
+
+      await expect(linhas).toHaveCount(1);
+      await expect(linhaJoao).toHaveCount(1);
     });
 
     test('deve exibir mensagem de sucesso após cadastro', async ({ page }) => {
@@ -513,6 +517,8 @@ test.describe('QS Acadêmico — Testes do Sistema de Notas', () => {
 });
 ```
 
+> **Nota:** Evite validar nomes de alunos com `page.getByText('João Silva')` no documento inteiro. Após o cadastro, o nome também aparece na mensagem de sucesso, o que pode gerar `strict mode violation`. Prefira restringir a asserção à tabela ou à linha correspondente.
+
 > **⚠️ Importante:** Ao executar estes testes, **alguns deles irão falhar**. Isso é esperado — o site contém um defeito intencional de implementação. A investigação e correção desse defeito será realizada na Parte 5 (Seção 6.5).
 
 **Tarefa para o aluno — testes adicionais a implementar:**
@@ -553,7 +559,7 @@ await expect(page.getByText('Nenhum aluno cadastrado.')).toBeVisible();
 await expect(page.locator('#tabela-alunos tbody tr')).toHaveCount(3);
 
 // Verificar que um texto NÃO está mais visível após exclusão
-await expect(page.getByText('João Silva')).not.toBeVisible();
+await expect(page.locator('#tabela-alunos tbody')).not.toContainText('João Silva');
 
 // Verificar conteúdo de um card de estatística
 await expect(page.locator('#stat-total')).toHaveText('5');
@@ -664,7 +670,7 @@ Error: locator.click: Error: strict mode violation:
 
 **Causa:** O locator encontrou mais de um elemento correspondente na página. No site QS Acadêmico, isso pode acontecer porque:
 - O texto "Nota 1" aparece tanto no `<label>` do formulário quanto no `<th>` da tabela de resultados.
-- Após cadastrar alunos, o nome de um aluno pode coincidir com texto em outro lugar da página.
+- Após cadastrar alunos, o nome de um aluno pode aparecer tanto na tabela quanto na mensagem de sucesso.
 
 **Soluções:**
 
@@ -676,10 +682,10 @@ await page.getByText('Nota 1').fill('8');
 await page.getByLabel('Nota 1').fill('8');
 
 // ✅ SOLUÇÃO 2 — Restringir a busca a uma seção específica
-await page.locator('#secao-cadastro').getByText('Nota 1');
+await page.locator('#secao-cadastro').getByLabel('Nota 1').fill('8');
 
 // ✅ SOLUÇÃO 3 — Usar .first() ou .nth() quando a ordem é conhecida
-await page.getByText('Nota 1').first();
+await page.locator('#secao-cadastro input[type="number"]').nth(0).fill('8');
 
 // ✅ SOLUÇÃO 4 — Tornar a busca mais específica com exact: true
 await page.getByText('Aprovado', { exact: true }); // Não casa com "Aprovados"
@@ -721,13 +727,13 @@ await expect(linha.locator('.badge')).toHaveText('Aprovado');
 ```typescript
 // ❌ NÃO RECOMENDADO — espera fixa, lento e frágil
 await page.waitForTimeout(2000);
-await expect(page.getByText('João')).toBeVisible();
+await expect(page.locator('#tabela-alunos tbody')).toContainText('João');
 
 // ✅ CORRETO — expect com auto-retry (tenta repetidamente até 5s)
-await expect(page.getByText('João')).toBeVisible();
+await expect(page.locator('#tabela-alunos tbody')).toContainText('João');
 
 // ✅ Se precisar de mais tempo, aumente o timeout da asserção específica
-await expect(page.getByText('João')).toBeVisible({ timeout: 10000 });
+await expect(page.locator('#tabela-alunos tbody')).toContainText('João', { timeout: 10000 });
 ```
 
 > **💡 Dica:** O Playwright já faz auto-retry nas asserções `expect()`. Na maioria dos casos, basta usar `await expect(...)` sem nenhum `waitFor` ou `waitForTimeout`. Se o teste falha por timeout, investigue se o elemento realmente é renderizado (abra o Trace Viewer).
