@@ -11,6 +11,26 @@ let alunos = [];
 let proximoId = 1;
 
 // ============================================
+// Funções Auxiliares
+// ============================================
+
+/**
+ * Escapa caracteres HTML para prevenir injeção de conteúdo.
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Normaliza texto para uso como classe CSS (remove acentos e converte para minúsculas).
+ */
+function normalizarClasse(texto) {
+    return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// ============================================
 // Funções de Cálculo
 // ============================================
 
@@ -125,13 +145,13 @@ function atualizarTabela(filtro = '') {
         const tr = document.createElement('tr');
         tr.setAttribute('data-testid', `aluno-${aluno.id}`);
         tr.innerHTML = `
-            <td>${aluno.nome}</td>
+            <td>${escapeHtml(aluno.nome)}</td>
             <td>${aluno.nota1.toFixed(1)}</td>
             <td>${aluno.nota2.toFixed(1)}</td>
             <td>${aluno.nota3.toFixed(1)}</td>
             <td>${aluno.media.toFixed(2)}</td>
-            <td><span class="badge badge-${aluno.situacao.toLowerCase()}">${aluno.situacao}</span></td>
-            <td><button class="btn-excluir" onclick="excluirAluno(${aluno.id})" aria-label="Excluir ${aluno.nome}">✕</button></td>
+            <td><span class="badge badge-${normalizarClasse(aluno.situacao)}">${aluno.situacao}</span></td>
+            <td><button class="btn-excluir" onclick="excluirAluno(${aluno.id})" aria-label="Excluir ${escapeHtml(aluno.nome)}">&#10005;</button></td>
         `;
         tbody.appendChild(tr);
     });

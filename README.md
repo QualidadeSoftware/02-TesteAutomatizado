@@ -33,11 +33,11 @@ Relembrando a Pirâmide de Testes, os níveis se organizam da seguinte forma:
 
 ```
         /‾‾‾‾‾‾‾‾‾‾‾\
-       /   E2E / UI    \        ← Poucos, lentos, caros (é aqui que o Playwright atua)
+       /   E2E / UI   \        ← Poucos, lentos, caros (é aqui que o Playwright atua)
       /‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\
-     /    Integração        \    ← Quantidade intermediária
-    /‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\
-   /       Unitários            \  ← Muitos, rápidos, baratos
+     /    Integração     \    ← Quantidade intermediária
+    /‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\
+   /       Unitários        \  ← Muitos, rápidos, baratos
   /‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\
 ```
 
@@ -233,14 +233,15 @@ test.describe('Cadastro de Alunos', () => {                               // [2]
     // Verificações
     const linhas = page.locator('#tabela-alunos tbody tr');               // [9]
     await expect(linhas).toHaveCount(1);                                  // [10]
-    await expect(page.getByText('Maria Souza')).toBeVisible();           // [11]
+    const linhaMaria = linhas.filter({ hasText: 'Maria Souza' });        // [11]
+    await expect(linhaMaria).toHaveCount(1);
 
     // Verificar a média calculada: (8 + 7 + 9) / 3 = 8.00
-    const celulaMedia = linhas.first().locator('td').nth(4);             // [12]
+    const celulaMedia = linhaMaria.first().locator('td').nth(4);         // [12]
     await expect(celulaMedia).toHaveText('8.00');                        // [13]
 
     // Verificar a situação (média >= 7 → Aprovado)
-    await expect(linhas.first().getByText('Aprovado')).toBeVisible();    // [14]
+    await expect(linhaMaria.first().locator('.badge')).toHaveText('Aprovado'); // [14]
   });
 });
 ```
@@ -259,14 +260,16 @@ test.describe('Cadastro de Alunos', () => {                               // [2]
 | **[8]** | `page.getByRole('button', { name: 'Cadastrar' }).click()` | Encontra um botão pelo seu papel acessível (`button`) e texto visível (`Cadastrar`), e clica nele. Mais resiliente que usar seletores CSS. |
 | **[9]** | `page.locator('#tabela-alunos tbody tr')` | Cria um locator que seleciona todas as linhas `<tr>` dentro do corpo da tabela. O locator é **lazy** — não busca os elementos imediatamente, apenas quando uma ação ou asserção é executada. |
 | **[10]** | `await expect(linhas).toHaveCount(1)` | Asserção que verifica que existe exatamente 1 linha na tabela. O Playwright tenta novamente automaticamente (*auto-retry*) até que a condição seja atendida ou o timeout expire. |
-| **[11]** | `await expect(...).toBeVisible()` | Verifica que o texto "Maria Souza" está visível na página. |
-| **[12]** | `linhas.first().locator('td').nth(4)` | Seleciona a 5ª célula (`nth(4)`, pois o índice começa em 0) da primeira linha — que corresponde à coluna "Média". |
+| **[11]** | `const linhaMaria = linhas.filter({ hasText: 'Maria Souza' })` | Restringe a busca à linha da tabela que contém o nome do aluno. Isso evita ambiguidade com a mensagem de sucesso, que também contém o nome cadastrado. |
+| **[12]** | `linhaMaria.first().locator('td').nth(4)` | Seleciona a 5ª célula (`nth(4)`, pois o índice começa em 0) da linha do aluno — que corresponde à coluna "Média". |
 | **[13]** | `await expect(celulaMedia).toHaveText('8.00')` | Verifica que o texto da célula é exatamente "8.00". **Este teste é crucial**: ele valida se o cálculo da média está correto. |
-| **[14]** | `getByText('Aprovado').toBeVisible()` | Verifica que a situação "Aprovado" aparece na linha do aluno. |
+| **[14]** | `locator('.badge').toHaveText('Aprovado')` | Verifica de forma precisa que a situação exibida na linha do aluno é "Aprovado", sem risco de casar com o card "Aprovados" nas estatísticas. |
 
 > **💡 Conceito-chave — Fixtures:** No Playwright, `page` é uma *fixture* fornecida automaticamente a cada teste. O framework cria uma nova instância do navegador para cada teste, garantindo que um teste não interfira no outro. Isso é chamado de **isolamento de testes**.
 
 > **💡 Conceito-chave — Auto-wait e Auto-retry:** O Playwright aguarda automaticamente que os elementos estejam prontos antes de interagir com eles. Além disso, as asserções com `expect()` tentam novamente até o timeout (padrão: 5 segundos). Isso elimina a necessidade de `sleep` ou `waitForTimeout` na maioria dos casos.
+
+> **⚠️ Nota:** Ao executar o teste acima com o site QS Acadêmico atual, ele poderá **falhar**. Isso é esperado — o site contém um defeito intencional que será investigado na Seção 6.5.
 
 ---
 
@@ -391,6 +394,8 @@ testes-playwright/
 └── package-lock.json
 ```
 
+> **Nota:** A estrutura gerada pode variar conforme a versão do Playwright instalada. Versões mais recentes podem não criar a pasta `tests-examples/`. Isso não afeta a atividade.
+
 ### 5.5 Executando o Teste de Exemplo
 
 Para validar que tudo está funcionando:
@@ -430,7 +435,7 @@ npx playwright codegen https://<seu-usuario>.github.io/02-TesteAutomatizado/
 
 Ao finalizar, o aluno deve:
 - Copiar o código gerado pelo Codegen.
-- Salvá-lo em `tests/qs-academico-codegen.spec.ts`.
+- Salvá-lo em `tests/qs-academico-codegen.spec.ts`. (*este arquivo não existe, você vai criá-lo*)
 - Executar o teste para confirmar que funciona: `npx playwright test qs-academico-codegen --headed`
 
 **Reflexão:** *Observe o código gerado. Que tipo de seletores o Codegen utilizou? São os mais indicados?*
@@ -460,8 +465,11 @@ test.describe('QS Acadêmico — Testes do Sistema de Notas', () => {
       await page.getByRole('button', { name: 'Cadastrar' }).click();
 
       // Verificar que o aluno aparece na tabela
-      await expect(page.locator('#tabela-alunos tbody tr')).toHaveCount(1);
-      await expect(page.getByText('João Silva')).toBeVisible();
+      const linhas = page.locator('#tabela-alunos tbody tr');
+      const linhaJoao = linhas.filter({ hasText: 'João Silva' });
+
+      await expect(linhas).toHaveCount(1);
+      await expect(linhaJoao).toHaveCount(1);
     });
 
     test('deve exibir mensagem de sucesso após cadastro', async ({ page }) => {
@@ -501,13 +509,17 @@ test.describe('QS Acadêmico — Testes do Sistema de Notas', () => {
       await page.getByRole('button', { name: 'Cadastrar' }).click();
 
       // Média esperada: (8 + 6 + 10) / 3 = 8.00
-      const celulaMedia = page.locator('#tabela-alunos tbody tr td').nth(4);
+      const celulaMedia = page.locator('#tabela-alunos tbody tr').first().locator('td').nth(4);
       await expect(celulaMedia).toHaveText('8.00');
     });
 
   });
 });
 ```
+
+> **Nota:** Evite validar nomes de alunos com `page.getByText('João Silva')` no documento inteiro. Após o cadastro, o nome também aparece na mensagem de sucesso, o que pode gerar `strict mode violation`. Prefira restringir a asserção à tabela ou à linha correspondente.
+
+> **⚠️ Importante:** Ao executar estes testes, **alguns deles irão falhar**. Isso é esperado — o site contém um defeito intencional de implementação. A investigação e correção desse defeito será realizada na Parte 5 (Seção 6.5).
 
 **Tarefa para o aluno — testes adicionais a implementar:**
 
@@ -520,6 +532,9 @@ Complementar o arquivo acima adicionando os seguintes testes. Para cada um, o al
 5. **Teste de situação — Aprovado:** Cadastrar um aluno com média ≥ 7 e verificar que a situação exibida é "Aprovado".
 6. **Teste de situação — Reprovado:** Cadastrar um aluno com média < 5 e verificar que a situação exibida é "Reprovado".
 7. **Teste de múltiplos cadastros:** Cadastrar 3 alunos consecutivos e verificar que a tabela possui 3 linhas.
+8. **Teste de situação — Recuperação:** Cadastrar um aluno com média ≥ 5 e < 7 e verificar que a situação exibida é "Recuperação".
+
+> **💡 Dica:** Para maximizar a chance de detectar defeitos, escolha notas com valores bem diferentes entre si (por exemplo: 4, 8, 10 em vez de 7, 7, 7). Valores iguais podem mascarar problemas no cálculo da média.
 
 ### 6.3 Parte 3: Asserções e Boas Práticas (20 min)
 
@@ -544,10 +559,24 @@ await expect(page.getByText('Nenhum aluno cadastrado.')).toBeVisible();
 await expect(page.locator('#tabela-alunos tbody tr')).toHaveCount(3);
 
 // Verificar que um texto NÃO está mais visível após exclusão
-await expect(page.getByText('João Silva')).not.toBeVisible();
+await expect(page.locator('#tabela-alunos tbody')).not.toContainText('João Silva');
 
 // Verificar conteúdo de um card de estatística
 await expect(page.locator('#stat-total')).toHaveText('5');
+```
+
+**Lidando com diálogos nativos (`alert`, `confirm`):**
+
+A funcionalidade "Limpar Tudo" utiliza `window.confirm()`. Para testá-la no Playwright, registre um handler **antes** de acionar o botão:
+
+```typescript
+// Aceitar o diálogo de confirmação (equivale a clicar "OK")
+page.on('dialog', async dialog => {
+  await dialog.accept();
+});
+await page.getByRole('button', { name: 'Limpar Tudo' }).click();
+
+// Para rejeitar (clicar "Cancelar"), use dialog.dismiss()
 ```
 
 **Boas práticas a destacar:**
@@ -626,6 +655,197 @@ npx playwright show-report
 
 **Reflexão para a turma:** *"O defeito foi descoberto apenas quando escrevemos testes que verificavam o cálculo com valores variados. Se tivéssemos testado apenas com notas iguais (ex: 7, 7, 7), o defeito teria sido detectado? Por quê?"*
 
+### 6.6 Problemas Comuns e Como Resolvê-los
+
+Durante a escrita e execução dos testes, é natural encontrar erros que não são defeitos da aplicação, mas sim problemas na forma como o teste foi escrito. Esta seção lista os problemas mais frequentes e suas soluções.
+
+#### Problema 1: "strict mode violation" — Múltiplos elementos encontrados
+
+**Sintoma:** O teste falha com uma mensagem como:
+
+```
+Error: locator.click: Error: strict mode violation:
+  getByText('Nota 1') resolved to 2 elements
+```
+
+**Causa:** O locator encontrou mais de um elemento correspondente na página. No site QS Acadêmico, isso pode acontecer porque:
+- O texto "Nota 1" aparece tanto no `<label>` do formulário quanto no `<th>` da tabela de resultados.
+- Após cadastrar alunos, o nome de um aluno pode aparecer tanto na tabela quanto na mensagem de sucesso.
+
+**Soluções:**
+
+```typescript
+// ❌ PROBLEMA — "Nota 1" existe no formulário E no cabeçalho da tabela
+await page.getByText('Nota 1').fill('8');
+
+// ✅ SOLUÇÃO 1 — Usar getByLabel (associa ao <label for="nota1">)
+await page.getByLabel('Nota 1').fill('8');
+
+// ✅ SOLUÇÃO 2 — Restringir a busca a uma seção específica
+await page.locator('#secao-cadastro').getByLabel('Nota 1').fill('8');
+
+// ✅ SOLUÇÃO 3 — Usar .first() ou .nth() quando a ordem é conhecida
+await page.locator('#secao-cadastro input[type="number"]').nth(0).fill('8');
+
+// ✅ SOLUÇÃO 4 — Tornar a busca mais específica com exact: true
+await page.getByText('Aprovado', { exact: true }); // Não casa com "Aprovados"
+```
+
+> **💡 Regra geral:** Sempre que o Playwright reportar "resolved to N elements", restrinja o escopo do locator em vez de simplesmente usar `.first()`. Restringir o escopo produz testes mais robustos.
+
+#### Problema 2: Texto parcial casa com elementos indesejados
+
+**Sintoma:** `getByText('Aprovado')` encontra tanto o badge "Aprovado" na tabela quanto o card "Aprovados" nas estatísticas.
+
+**Causa:** Por padrão, `getByText` faz correspondência parcial — "Aprovado" é substring de "Aprovados".
+
+**Soluções:**
+
+```typescript
+// ❌ PROBLEMA — casa com "Aprovado" e "Aprovados"
+await expect(page.getByText('Aprovado')).toBeVisible();
+
+// ✅ SOLUÇÃO 1 — Correspondência exata
+await expect(page.getByText('Aprovado', { exact: true })).toBeVisible();
+
+// ✅ SOLUÇÃO 2 — Restringir ao contexto da tabela
+const linha = page.locator('#tabela-alunos tbody tr').first();
+await expect(linha.getByText('Aprovado')).toBeVisible();
+
+// ✅ SOLUÇÃO 3 — Usar o badge específico (mais preciso)
+await expect(linha.locator('.badge')).toHaveText('Aprovado');
+```
+
+#### Problema 3: Teste falha por timing — elemento ainda não apareceu
+
+**Sintoma:** O teste falha com `Timeout exceeded` ao verificar um elemento que deveria estar presente.
+
+**Causa:** A ação anterior (ex: clique em "Cadastrar") ainda não atualizou o DOM quando a asserção é executada.
+
+**Soluções:**
+
+```typescript
+// ❌ NÃO RECOMENDADO — espera fixa, lento e frágil
+await page.waitForTimeout(2000);
+await expect(page.locator('#tabela-alunos tbody')).toContainText('João');
+
+// ✅ CORRETO — expect com auto-retry (tenta repetidamente até 5s)
+await expect(page.locator('#tabela-alunos tbody')).toContainText('João');
+
+// ✅ Se precisar de mais tempo, aumente o timeout da asserção específica
+await expect(page.locator('#tabela-alunos tbody')).toContainText('João', { timeout: 10000 });
+```
+
+> **💡 Dica:** O Playwright já faz auto-retry nas asserções `expect()`. Na maioria dos casos, basta usar `await expect(...)` sem nenhum `waitFor` ou `waitForTimeout`. Se o teste falha por timeout, investigue se o elemento realmente é renderizado (abra o Trace Viewer).
+
+#### Problema 4: `toHaveText` falha por espaços ou quebras de linha
+
+**Sintoma:** `await expect(celula).toHaveText('8.00')` falha mesmo quando visualmente o valor está correto.
+
+**Causa:** O texto do elemento pode conter espaços extras, `\n` ou `\t` invisíveis.
+
+**Soluções:**
+
+```typescript
+// ✅ Usar toContainText para correspondência parcial
+await expect(celula).toContainText('8.00');
+
+// ✅ Usar regex para ignorar espaços ao redor
+await expect(celula).toHaveText(/\s*8\.00\s*/);
+
+// ✅ Inspecionar o texto real para depuração
+const texto = await celula.textContent();
+console.log('Texto real:', JSON.stringify(texto));
+```
+
+#### Problema 5: Testes interferem entre si
+
+**Sintoma:** Os testes passam quando executados individualmente (`npx playwright test --grep "nome do teste"`), mas falham quando executados juntos.
+
+**Causa:** O site mantém dados em memória (array `alunos`). Se um teste cadastra alunos e o próximo assume que a tabela está vazia, haverá conflito, pois o Playwright abre uma nova página para cada teste — **mas cuidado**: se por algum motivo os testes compartilharem estado (ex: mesma aba), dados do teste anterior podem persistir.
+
+**Soluções:**
+
+```typescript
+// ✅ RECOMENDADO — usar beforeEach para garantir estado limpo
+test.beforeEach(async ({ page }) => {
+  // Cada teste recebe uma nova instância de page (nova aba)
+  // Navegar para a página garante estado inicial limpo
+  await page.goto('/');
+});
+
+// ✅ Se necessário, recarregar a página explicitamente
+await page.reload();
+```
+
+> **💡 No QS Acadêmico**, como os dados ficam apenas em memória JavaScript (sem banco de dados), cada `page.goto('/')` recarrega a página com o array `alunos` vazio — garantindo isolamento natural.
+
+#### Problema 6: Campo numérico não aceita o valor via `fill()`
+
+**Sintoma:** `page.getByLabel('Nota 1').fill('8')` não preenche o campo, ou o valor fica incorreto.
+
+**Causa:** Em alguns navegadores, campos `<input type="number">` podem ter comportamento diferente com `fill()`.
+
+**Soluções:**
+
+```typescript
+// ✅ SOLUÇÃO 1 — limpar o campo antes de preencher
+await page.getByLabel('Nota 1').clear();
+await page.getByLabel('Nota 1').fill('8');
+
+// ✅ SOLUÇÃO 2 — usar pressSequentially para simular digitação real
+await page.getByLabel('Nota 1').pressSequentially('8');
+
+// ✅ SOLUÇÃO 3 — clicar no campo antes de preencher
+await page.getByLabel('Nota 1').click();
+await page.getByLabel('Nota 1').fill('8');
+```
+
+#### Problema 7: `npx playwright test` não encontra os testes
+
+**Sintoma:** O comando executa mas reporta "0 tests found" ou "No tests found".
+
+**Causas e soluções:**
+
+| Causa provável | Solução |
+|----------------|---------|
+| Arquivo não termina com `.spec.ts` | Renomear para `nome.spec.ts` |
+| Arquivo está fora da pasta `tests/` | Mover para a pasta `tests/` ou ajustar `testDir` no config |
+| Está executando fora do diretório do projeto | Executar `cd testes-playwright` antes |
+| Faltou a função `test()` no arquivo | Verificar se o arquivo importa e usa `test` do `@playwright/test` |
+
+```bash
+# Verificar quais testes o Playwright encontra
+npx playwright test --list
+```
+
+#### Problema 8: Navegadores não instalados
+
+**Sintoma:** Erro `browserType.launch: Executable doesn't exist` ao executar os testes.
+
+**Solução:**
+
+```bash
+# Instalar todos os navegadores configurados
+npx playwright install
+
+# Ou instalar apenas o Chromium (mais rápido)
+npx playwright install chromium
+```
+
+#### Resumo Rápido
+
+| Problema | Mensagem típica | Solução principal |
+|----------|----------------|-------------------|
+| Múltiplos elementos | `strict mode violation` | Restringir escopo com `locator()` ou `{ exact: true }` |
+| Texto parcial | Asserção casa com elemento errado | Usar `{ exact: true }` ou restringir ao container |
+| Timeout | `Timeout exceeded` | Confiar no auto-retry; verificar no Trace Viewer |
+| Espaços invisíveis | `toHaveText` falha | Usar `toContainText` ou regex |
+| Testes interferem | Passam isolados, falham juntos | Garantir `page.goto('/')` no `beforeEach` |
+| Campo numérico | Valor não preenchido | Usar `clear()` + `fill()` ou `pressSequentially()` |
+| 0 testes encontrados | "No tests found" | Verificar nome do arquivo e `testDir` |
+| Navegador ausente | `Executable doesn't exist` | Executar `npx playwright install` |
+
 ---
 
 ## 7. Entregáveis
@@ -639,7 +859,6 @@ Cada aluno (ou dupla) deverá entregar:
 | 3 | Screenshot ou PDF do relatório HTML do Playwright mostrando os resultados dos testes (**antes** e **depois** da correção do defeito) | Imagem ou PDF |
 | 4 | Registro do defeito encontrado preenchido conforme o modelo da seção 6.5 | PDF ou Markdown |
 | 5 | Commit no repositório com a **correção do defeito** no arquivo `docs/js/app.js` | Commit no Git |
-| 6 | Documento reflexivo (máx. 1 página) respondendo: *"Como os testes automatizados ajudaram a encontrar o defeito? Quais as vantagens e limitações que você percebeu ao automatizar testes com o Playwright?"* | PDF ou Markdown |
 
 ---
 
